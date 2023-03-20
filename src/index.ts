@@ -1,1 +1,5 @@
-console.log('pokt-reward-calculator');
+import { ServicerRewardCalculator } from './servicer-reward-calculator';
+
+export {
+  ServicerRewardCalculator,
+};
