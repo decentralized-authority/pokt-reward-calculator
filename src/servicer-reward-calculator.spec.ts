@@ -38,6 +38,7 @@ describe('ServicerRewardCalculator', function() {
   before(async function() {
     rewardCalculator = new ServicerRewardCalculator({
       pocketEndpoint,
+      getParamsFromState: false,
     });
     port = 3000;
     while(await portUsed.check(port)) {
@@ -167,10 +168,12 @@ describe('ServicerRewardCalculator', function() {
     });
   });
 
+  let startingHeight: number;
+
   describe('ServiceRewardCalculator.queryAccountTxsByHeight', function() {
     it('should return the transactions for an account at or above a specified height', async function() {
       const height = await rewardCalculator.queryHeight();
-      const startingHeight = height - 100;
+      startingHeight = height - 100;
       const res = await rewardCalculator.queryAccountTxsByHeight(address, startingHeight);
       res.every((tx: any) => tx.height >= startingHeight).should.be.True();
     });
@@ -181,7 +184,7 @@ describe('ServicerRewardCalculator', function() {
   describe('ServiceRewardCalculator.getSessionsByHeight', function() {
     it('should return session datas for an account at or above a specified height', async function() {
       const height = await rewardCalculator.queryHeight();
-      const startingHeight = height - 100;
+      // const startingHeight = height - 100;
       const res = await rewardCalculator.getSessionsByHeight(address, startingHeight);
       should(res).be.an.Array();
       res.every((pair: any) => pair.claim && pair.proof).should.be.True();
@@ -212,6 +215,20 @@ describe('ServicerRewardCalculator', function() {
   describe('ServiceRewardCalculator.getParamsFromState', function() {
     it('should return the reward params from state', async function() {
       const res = await rewardCalculator.getParamsFromState(state);
+      should(res).be.an.Object();
+      res.dao_allocation.should.be.a.String();
+      res.proposer_allocation.should.be.a.String();
+      res.relays_to_tokens_multiplier.should.be.a.String();
+      res.servicer_stake_floor_multipler.should.be.a.String();
+      res.servicer_stake_floor_multiplier_exponent.should.be.a.String();
+      res.servicer_stake_weight_ceiling.should.be.a.String();
+      res.servicer_stake_weight_multipler.should.be.a.String();
+    });
+  });
+
+  describe('ServiceRewardCalculator.getParamsFromHeight', function() {
+    it('should return the reward params from a specified height', async function() {
+      const res = await rewardCalculator.getParamsFromHeight(startingHeight);
       should(res).be.an.Object();
       res.dao_allocation.should.be.a.String();
       res.proposer_allocation.should.be.a.String();
@@ -255,6 +272,48 @@ describe('ServicerRewardCalculator', function() {
         res.reward.should.be.a.String();
         res.reward.length.should.be.greaterThan(0);
         res.rewardDenom.should.be.a.String();
+      }
+    });
+  });
+
+  describe('ServiceRewardCalculator.getSessionsRewardsFromHeight', function() {
+    it('should return an array of reward datas from an array of sessions', async function() {
+      this.timeout(300000);
+      {
+        // Condenses results (full claim and proof transactions are not included)
+        const resArr = await rewardCalculator.getSessionsRewardsFromHeight(address, sessions[0].sessionHeight, false, 30000);
+        should(resArr).be.an.Array();
+        resArr.length.should.be.greaterThan(0);
+        for(const res of resArr) {
+          if(isError(res))
+            throw res;
+          res.sessionHeight.should.be.a.Number();
+          res.chain.should.be.a.String();
+          res.relays.should.be.a.Number();
+          res.claim.should.be.a.String();
+          res.proof.should.be.a.String();
+          res.reward.should.be.a.String();
+          res.reward.length.should.be.greaterThan(0);
+          res.rewardDenom.should.be.a.String();
+        }
+      }
+      {
+        // Full results (full claim and proof transactions are included)
+        const resArr = await rewardCalculator.getSessionsRewardsFromHeight(address, sessions[0].sessionHeight, true, 30000);
+        should(resArr).be.an.Array();
+        resArr.length.should.be.greaterThan(0);
+        for(const res of resArr) {
+          if(isError(res))
+            throw res;
+          res.sessionHeight.should.be.a.Number();
+          res.chain.should.be.a.String();
+          res.relays.should.be.a.Number();
+          res.claim.should.be.an.Object();
+          res.proof.should.be.an.Object();
+          res.reward.should.be.a.String();
+          res.reward.length.should.be.greaterThan(0);
+          res.rewardDenom.should.be.a.String();
+        }
       }
     });
   });

@@ -12,6 +12,13 @@ export interface RewardData extends SessionData {
   rewardDenom: 'upokt'
 }
 
+export interface RewardDataCondensed extends SessionData {
+  reward: string
+  rewardDenom: 'upokt'
+  proof: string
+  claim: string
+}
+
 export interface RewardParams {
   dao_allocation: string
   proposer_allocation: string

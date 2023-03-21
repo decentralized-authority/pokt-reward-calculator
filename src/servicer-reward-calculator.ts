@@ -2,7 +2,7 @@ import request from 'superagent';
 import isError from 'lodash/isError';
 import isBoolean from 'lodash/isBoolean';
 import * as math from 'mathjs';
-import { PocketNode, RewardData, RewardParams, SessionData } from './interfaces';
+import { PocketNode, RewardData, RewardDataCondensed, RewardParams, SessionData } from './interfaces';
 import { txType } from './constants';
 
 export interface ServicerRewardCalculatorParams {
@@ -13,6 +13,7 @@ export interface ServicerRewardCalculatorParams {
   stateCacheLength?: number
   useStateCache?: boolean
   txPerPage?: number
+  getParamsFromState?: boolean
 }
 export class ServicerRewardCalculator {
 
@@ -24,6 +25,8 @@ export class ServicerRewardCalculator {
   _stateCacheLength = 10;
   _useStateCache = true;
   _stateCache: [number, any][] = [];
+  _paramsCache: [number, RewardParams][] = [];
+  _getParamsFromState = true;
 
   constructor(params: ServicerRewardCalculatorParams = {}) {
     this._pocketEndpoint = params.pocketEndpoint || this._pocketEndpoint;
@@ -33,6 +36,7 @@ export class ServicerRewardCalculator {
     this._stateCacheLength = params.stateCacheLength || this._stateCacheLength;
     this._useStateCache = isBoolean(params.useStateCache) ? params.useStateCache : this._useStateCache;
     this._txPerPage = params.txPerPage || this._txPerPage;
+    this._getParamsFromState = isBoolean(params.getParamsFromState) ? params.getParamsFromState : this._getParamsFromState;
   }
 
   private async _makeRequest(method: string, endpoint: string, body: any = undefined, timeout = this._requestTimeout): Promise<any> {
@@ -290,7 +294,45 @@ export class ServicerRewardCalculator {
     return  state.pos.params as RewardParams;
   }
 
-  async _calculateReward(session: SessionData, state: any, node: PocketNode): Promise<string> {
+  async getParamsFromHeight(height: number, timeout = this._requestTimeout): Promise<RewardParams> {
+    this._checkPocketEndpoint();
+    if(this._useStateCache) {
+      const cachedParams = this._paramsCache.find((p) => p[0] === height);
+      if(cachedParams)
+        return cachedParams[1];
+    }
+    const res = await this._makeMultiRequest(
+      this._multiRequestCount,
+      'POST',
+      `${this._pocketEndpoint}/v1/query/allParams`,
+      {
+        height,
+      },
+      timeout,
+    );
+    if(isError(res))
+      throw res;
+    else if(res.error)
+      throw new Error(res.error.message);
+    const nodeParams: {param_key: string, param_value: any}[] = res.node_params;
+    const params = {
+      dao_allocation: nodeParams.find((param) => param.param_key === 'pos/DAOAllocation')?.param_value,
+      proposer_allocation: nodeParams.find((param) => param.param_key === 'pos/ProposerPercentage')?.param_value,
+      relays_to_tokens_multiplier: nodeParams.find((param) => param.param_key === 'pos/RelaysToTokensMultiplier')?.param_value,
+      servicer_stake_floor_multipler: nodeParams.find((param) => param.param_key === 'pos/ServicerStakeFloorMultiplier')?.param_value,
+      servicer_stake_floor_multiplier_exponent: nodeParams.find((param) => param.param_key === 'pos/ServicerStakeFloorMultiplierExponent')?.param_value,
+      servicer_stake_weight_ceiling: nodeParams.find((param) => param.param_key === 'pos/ServicerStakeWeightCeiling')?.param_value,
+      servicer_stake_weight_multipler: nodeParams.find((param) => param.param_key === 'pos/ServicerStakeWeightMultiplier')?.param_value,
+    };
+    if(this._useStateCache)
+      this._paramsCache = [
+        [height, params],
+        ...this._paramsCache.slice(0, this._stateCacheLength - 1),
+      ];
+    return params;
+  }
+
+  async _calculateReward(session: SessionData, params: RewardParams, node: PocketNode): Promise<string> {
 
     const {
       relays_to_tokens_multiplier,
@@ -300,7 +342,7 @@ export class ServicerRewardCalculator {
       servicer_stake_weight_multipler,
       dao_allocation,
       proposer_allocation,
-    } = this.getParamsFromState(state);
+    } = params;
     const stake = math.bignumber(node.tokens);
 
     const relaysToTokensMultiplier = math.bignumber(relays_to_tokens_multiplier);
@@ -348,28 +390,36 @@ export class ServicerRewardCalculator {
 
   async getRewardsFromSessions(sessions: SessionData[], retryTimeout = this._retryRequestTimeout): Promise<(RewardData|Error)[]> {
     this._checkPocketEndpoint();
+    const { _getParamsFromState: getParamsFromState } = this;
     const rewards: (RewardData|Error)[] = [];
     const stateCache: Map<number, any> = new Map();
     const nodeCache: Map<number, {[account: string]: PocketNode}> = new Map();
+    const paramsCache: Map<number, RewardParams> = new Map();
     for(const session of sessions) {
       const proofHeight = session.proof.height;
-      let state: any;
-      let stateError = '';
-      try {
-        if(stateCache.has(proofHeight)) {
-          state = stateCache.get(proofHeight);
-        } else {
-          state = await this.queryState(proofHeight, retryTimeout);
-          stateCache.set(proofHeight, state);
+      let params: RewardParams;
+      if(getParamsFromState) {
+        let state: any;
+        let stateError = '';
+        try {
+          if(stateCache.has(proofHeight)) {
+            state = stateCache.get(proofHeight);
+          } else {
+            state = await this.queryState(proofHeight, retryTimeout);
+            stateCache.set(proofHeight, state);
+          }
+          if(!state)
+            stateError = `Unable to get state at height ${proofHeight}`;
+        } catch(err: any) {
+          stateError = `Error getting state at height ${proofHeight} - ` + err.message;
         }
-        if(!state)
-          stateError = `Unable to get state at height ${proofHeight}`;
-      } catch(err: any) {
-        stateError = `Error getting state at height ${proofHeight} - ` + err.message;
-      }
-      if(stateError) {
-        rewards.push(new Error(stateError));
-        continue;
+        if(stateError) {
+          rewards.push(new Error(stateError));
+          continue;
+        }
+        params = this.getParamsFromState(state);
+      } else {
+        params = await this.getParamsFromHeight(proofHeight, retryTimeout);
       }
       let node: PocketNode|null = null;
       let nodeError = '';
@@ -396,11 +446,11 @@ export class ServicerRewardCalculator {
         rewards.push(new Error(nodeError));
         continue;
       }
-      if(session && state && node) {
+      if(node) {
         let reward: string = '';
         let rewardError = '';
         try {
-          reward = await this._calculateReward(session, state, node);
+          reward = await this._calculateReward(session, params, node);
         } catch(err: any) {
           rewardError = `Error calculating reward for session at height ${session?.sessionHeight} with proof ${session?.proof?.hash} - ` + err.message;
         }
@@ -424,6 +474,26 @@ export class ServicerRewardCalculator {
     if(isError(reward))
       throw reward;
     return reward;
+  }
+
+  async getSessionsRewardsFromHeight(address: string, startingHeight: number, includeTransactions = false, retryTimeout = this._retryRequestTimeout): Promise<(RewardDataCondensed|RewardData|Error)[]> {
+    this._checkPocketEndpoint();
+    const sessions = await this.getSessionsByHeight(address, startingHeight, retryTimeout);
+    const rewards = await this.getRewardsFromSessions(sessions, retryTimeout);
+    // if includeTransactions is true, send the reward data including the full proof and claim transactions
+    if(includeTransactions)
+      return rewards;
+    // otherwise, return the condensed version of the reward data which only includes the hashes of the proof and claim transactions
+    return rewards
+      .map((rewardData) => {
+        if(isError(rewardData))
+          return rewardData;
+        return {
+          ...rewardData,
+          proof: rewardData.proof.hash,
+          claim: rewardData.claim.hash,
+        };
+      });
   }
 
 }

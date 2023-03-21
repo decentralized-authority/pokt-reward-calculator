@@ -30,7 +30,7 @@ export class ServicerRewardServer {
       express()
         .use(cors())
         .use(bodyParser.json({
-          limit: '10mb',
+          limit: '2mb',
         }))
         .post('/', this.handleRequest)
         .listen(port, () => {
