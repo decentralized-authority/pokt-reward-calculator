@@ -1,5 +1,5 @@
 import should from 'should';
-import { ServicerRewardCalculator, ServicerRewardCalculatorParams } from './servicer-reward-calculator';
+import { ServicerRewardCalculator } from './servicer-reward-calculator';
 import express from 'express';
 import * as bodyParser from 'body-parser';
 import { Server } from 'net';
