@@ -3,12 +3,13 @@
   "version": "0.1.0",
   "description": "",
   "main": "./lib/index.js",
-  "types": "./lib/types/index.d.ts",
+  "types": "./types/index.d.ts",
   "scripts": {
     "build": "tsc",
     "watch": "tsc -w",
     "test": "ts-mocha -p ./tsconfig.json './src/**/*.spec.ts'",
-    "prepare": "node ./build-scripts/clear-build-dir.js && npm run build"
+    "prepack": "node ./build-scripts/clear-build-dir.js && npm run build",
+    "start-server": "node ./lib/start-servicer-reward-server.js"
   },
   "keywords": [],
   "author": "Ryan Burgett <ryan@burgettdev.net>",
@@ -30,10 +31,7 @@
     "@types/node": "^16.0.0",
     "@types/superagent": "^4.1.15",
     "@types/tcp-port-used": "^1.0.1",
-    "body-parser": "^1.20.2",
-    "cors": "^2.8.5",
     "eslint": "^7.26.0",
-    "express": "^4.18.2",
     "fs-extra": "^11.1.1",
     "mocha": "^8.0.0",
     "should": "^13.2.3",
@@ -42,6 +40,9 @@
     "typescript": "^4.7.4"
   },
   "dependencies": {
+    "body-parser": "^1.20.2",
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
     "lodash": "^4.17.21",
     "mathjs": "^10.6.4",
     "superagent": "^8.0.0"

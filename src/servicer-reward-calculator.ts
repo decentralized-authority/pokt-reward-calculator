@@ -347,6 +347,7 @@ export class ServicerRewardCalculator {
   }
 
   async getRewardsFromSessions(sessions: SessionData[], retryTimeout = this._retryRequestTimeout): Promise<(RewardData|Error)[]> {
+    this._checkPocketEndpoint();
     const rewards: (RewardData|Error)[] = [];
     const stateCache: Map<number, any> = new Map();
     const nodeCache: Map<number, {[account: string]: PocketNode}> = new Map();
@@ -418,6 +419,7 @@ export class ServicerRewardCalculator {
   }
 
   async getRewardFromSession(session: SessionData, retryTimeout = this._retryRequestTimeout): Promise<RewardData> {
+    this._checkPocketEndpoint();
     const [ reward ] = await this.getRewardsFromSessions([session], retryTimeout);
     if(isError(reward))
       throw reward;
