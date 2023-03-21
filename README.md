@@ -1,4 +1,4 @@
-# pokt-reward-calculator
+# POKT Reward Calculator
 Module written in TypeScript for easily calculating Pocket Servicer Node rewards post PIP-22.
 
 ## Getting Started

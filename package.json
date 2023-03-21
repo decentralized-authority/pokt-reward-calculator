@@ -3,10 +3,12 @@
   "version": "0.1.0",
   "description": "",
   "main": "./lib/index.js",
+  "types": "./lib/types/index.d.ts",
   "scripts": {
     "build": "tsc",
     "watch": "tsc -w",
-    "test": "ts-mocha -p ./tsconfig.json './src/**/*.spec.ts'"
+    "test": "ts-mocha -p ./tsconfig.json './src/**/*.spec.ts'",
+    "prepare": "npm run build"
   },
   "keywords": [],
   "author": "Ryan Burgett <ryan@burgettdev.net>",
