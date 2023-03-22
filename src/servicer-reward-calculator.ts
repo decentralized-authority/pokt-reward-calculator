@@ -105,7 +105,7 @@ export class ServicerRewardCalculator {
     }
   }
 
-  _checkPocketEndpoint(): void {
+  private _checkPocketEndpoint(): void {
     if(!this._pocketEndpoint)
       throw new Error('Pocket endpoint not set');
   }
@@ -332,7 +332,7 @@ export class ServicerRewardCalculator {
     return params;
   }
 
-  async _calculateReward(session: SessionData, params: RewardParams, node: PocketNode): Promise<string> {
+  async calculateReward(relayCount: number, stakedTokens: string, params: RewardParams): Promise<string> {
 
     const {
       relays_to_tokens_multiplier,
@@ -343,7 +343,7 @@ export class ServicerRewardCalculator {
       dao_allocation,
       proposer_allocation,
     } = params;
-    const stake = math.bignumber(node.tokens);
+    const stake = math.bignumber(stakedTokens);
 
     const relaysToTokensMultiplier = math.bignumber(relays_to_tokens_multiplier);
     const servicerStakeFloorMultipler = math.bignumber(servicer_stake_floor_multipler);
@@ -371,7 +371,7 @@ export class ServicerRewardCalculator {
     const weight = math.divide(preweight, servicerStakeWeightMultipler);
 
     // @ts-ignore
-    const coins = math.floor(math.multiply(math.multiply(relaysToTokensMultiplier, session.relays), weight));
+    const coins = math.floor(math.multiply(math.multiply(relaysToTokensMultiplier, math.bignumber(relayCount)), weight));
 
     const daoAllocationPercentage = math.divide(daoAllocation, math.bignumber(100));
     const daoAllocationCoins = math.multiply(coins, daoAllocationPercentage);
@@ -450,7 +450,7 @@ export class ServicerRewardCalculator {
         let reward: string = '';
         let rewardError = '';
         try {
-          reward = await this._calculateReward(session, params, node);
+          reward = await this.calculateReward(session.relays, node.tokens, params);
         } catch(err: any) {
           rewardError = `Error calculating reward for session at height ${session?.sessionHeight} with proof ${session?.proof?.hash} - ` + err.message;
         }

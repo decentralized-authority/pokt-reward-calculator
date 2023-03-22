@@ -5,7 +5,7 @@ import * as bodyParser from 'body-parser';
 import { Server } from 'net';
 import portUsed from 'tcp-port-used';
 import isError from 'lodash/isError';
-import { SessionData } from './interfaces';
+import { RewardParams, SessionData } from './interfaces';
 
 describe('ServicerRewardCalculator', function() {
 
@@ -31,6 +31,9 @@ describe('ServicerRewardCalculator', function() {
   const postReturnBodyPath0 = '/postreturnbodypath0';
   const multiRequestCount = 3;
   const address = process.env.NODE_ADDRESS || '';
+  let startingHeight: number;
+  let sessions: SessionData[] = [];
+  let state: any;
 
   if(!address)
     throw new Error('NODE_ADDRESS env var not set');
@@ -168,8 +171,6 @@ describe('ServicerRewardCalculator', function() {
     });
   });
 
-  let startingHeight: number;
-
   describe('ServiceRewardCalculator.queryAccountTxsByHeight', function() {
     it('should return the transactions for an account at or above a specified height', async function() {
       const height = await rewardCalculator.queryHeight();
@@ -178,8 +179,6 @@ describe('ServicerRewardCalculator', function() {
       res.every((tx: any) => tx.height >= startingHeight).should.be.True();
     });
   });
-
-  let sessions: SessionData[] = [];
 
   describe('ServiceRewardCalculator.getSessionsByHeight', function() {
     it('should return session datas for an account at or above a specified height', async function() {
@@ -194,7 +193,6 @@ describe('ServicerRewardCalculator', function() {
     });
   });
 
-  let state: any;
   describe('ServiceRewardCalculator.queryState', function() {
     it('should return the state of the blockchain at a specified height', async function() {
       this.timeout(120000);
@@ -237,6 +235,32 @@ describe('ServicerRewardCalculator', function() {
       res.servicer_stake_floor_multiplier_exponent.should.be.a.String();
       res.servicer_stake_weight_ceiling.should.be.a.String();
       res.servicer_stake_weight_multipler.should.be.a.String();
+    });
+  });
+
+  describe('ServiceRewardCalculator.calculateReward', function() {
+    it('should calculate session rewards', async function() {
+      const params: RewardParams = {
+        dao_allocation: '10',
+        proposer_allocation: '5',
+        relays_to_tokens_multiplier: '562',
+        servicer_stake_floor_multipler: '15000000000',
+        servicer_stake_floor_multiplier_exponent: '1',
+        servicer_stake_weight_ceiling: '60000000000',
+        servicer_stake_weight_multipler: '2.585',
+      };
+      const relays = 12345;
+      const stakeReward = [
+        {stake: '15010000000', reward: '2281318'}, // Bucket 1
+        {stake: '30010000000', reward: '4562636'}, // Bucket 2
+        {stake: '45010000000', reward: '6843953'}, // Bucket 3
+        {stake: '60010000000', reward: '9125272'}, // Bucket 4
+      ];
+      for(const {stake, reward} of stakeReward) {
+        const res = await rewardCalculator.calculateReward(relays, stake, params);
+        res.should.be.a.String();
+        res.should.equal(reward);
+      }
     });
   });
 
