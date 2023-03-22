@@ -24,7 +24,7 @@ import { ServiceRewardCalculator } from '[path-to-pokt-reward-calculator]/lib';
 (async function() {
 
   const rewardCalculator = new ServicerRewardCalculator({
-    pocketEndpoint: 'https://myexamplepocketendpoint.com:12345', // Pocket RPC endpoint
+    pocketEndpoint: 'https://myexamplepocketendpoint.com:12345', // Optional: Pocket RPC endpoint (required for methods that make Pocket RPC calls)
     requestTimeout: 20000,       // Optional: Individual HTTP request timeout. default: 20000
     retryRequestTimeout: 20000,  // Optional: Timeout for retry requests after a failed request. default: 20000
     multiRequestCount: 3,        // Optional: Number of requests to make in case of bad responses. default: 3
@@ -32,12 +32,34 @@ import { ServiceRewardCalculator } from '[path-to-pokt-reward-calculator]/lib';
     useStateCache: true,         // Optional: Whether or not to use the state cache. default: true 
     txPerPage: 10,               // Optional: Number of transactions to request per page. default: 10
     
-    getParamsFromState: true,   // Optional: Whether or not to get the session parameters from /v1/query/state. default: true
+    getParamsFromState: true,    // Optional: Whether or not to get the session parameters from /v1/query/state. default: true
     // NOTE: Getting params from state rather than /v1/query/allParams is more accurate but takes significantly longer
 
   });
+
+  /***************************************************************
+   * Calculate rewards by providing values directly              *
+   ***************************************************************/
+
+  const params = {
+    dao_allocation: '10',
+    proposer_allocation: '5',
+    relays_to_tokens_multiplier: '562',
+    servicer_stake_floor_multipler: '15000000000',
+    servicer_stake_floor_multiplier_exponent: '1',
+    servicer_stake_weight_ceiling: '60000000000',
+    servicer_stake_weight_multipler: '2.585',
+  };
+  const relayCount = 12345;
+  const staked = '60010000000'; // in upokt
+  const reward = await rewardCalculator.calculateReward(relayCount, staked, params);
   
-  const address = '4828816c3eb20a189aefac9f9bb2f46d6adda82b'; // A Pocket Servicer Address
+  /***************************************************************
+   * Methods that require a Pocket RPC endpoint                  *
+   ***************************************************************/
+
+    // A Pocket Servicer Address
+  const address = '4828816c3eb20a189aefac9f9bb2f46d6adda82b';
 
   // Get the latest block height
   const blockHeight = await rewardCalculator.queryHeight();
