@@ -15,9 +15,7 @@ $ pnpm install
 $ pnpm run build
 ```
 
-### Try it out!
-
-#### Using the library directly:
+## Using the library directly:
 ```ts
 import { ServiceRewardCalculator } from '[path-to-pokt-reward-calculator]/lib';
 
@@ -77,7 +75,7 @@ import { ServiceRewardCalculator } from '[path-to-pokt-reward-calculator]/lib';
 })();
 ```
 
-#### Using the server:
+## Using the server:
 ```ts
 import { ServiceRewardServer } from '[path-to-pokt-reward-calculator]/lib';
 import request from 'superagent'; // using superagent as an example
@@ -136,6 +134,27 @@ import request from 'superagent'; // using superagent as an example
 })();
 ```
 
+## Using Docker:
+Server parameters can be entered as environment variables and correspond directly to the ServicerRewardServerParams interface. The following environment variables are available:
+* `PRC_PORT`
+* `PRC_POCKET_ENDPOINT`
+* `PRC_REQUEST_TIMEOUT`
+* `PRC_RETRY_REQUEST_TIMEOUT`
+* `PRC_STATE_CACHE_LENGTH`
+* `PRC_USE_STATE_CACHE`
+* `PRC_TX_PER_PAGE`
+* `PRC_GET_PARAMS_FROM_STATE`
+
+```bash
+$ docker run -d --restart=always \
+ -p 3300:3300/tcp --name pokt-reward-server \
+ --env PRC_PORT=3300 \
+ --env PRC_POCKET_ENDPOINT=https://myexamplepocketendpoint.com:12345 \
+ --env PRC_STATE_CACHE_LENGTH=100 \
+ --env PRC_USE_STATE_CACHE=true \
+ --env PRC_GET_PARAMS_FROM_STATE=false \
+ decentralizedauthority/pokt-reward-calculator:0.2.0
+```
 
 ## Contributions
 Contributions are welcome! If you have any issues and/or contributions you would like to make, feel free to file an issue and/or issue a pull request.
