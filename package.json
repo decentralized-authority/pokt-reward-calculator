@@ -8,7 +8,7 @@
     "build": "tsc",
     "watch": "tsc -w",
     "test": "ts-mocha -p ./tsconfig.json './src/**/*.spec.ts'",
-    "prepack": "node ./build-scripts/clear-build-dir.js && npm run build",
+    "prepare": "npm run build",
     "start-server": "node ./lib/start-servicer-reward-server.js"
   },
   "keywords": [],
