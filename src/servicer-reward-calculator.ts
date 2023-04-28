@@ -429,7 +429,7 @@ export class ServicerRewardCalculator {
           // @ts-ignore
           node = nodeCache.get(proofHeight)[session.account];
         } else {
-          node = await this.queryNode(session.account);
+          node = await this.queryNode(session.account, proofHeight);
           if(nodeCache.has(proofHeight)) {
             // @ts-ignore
             nodeCache.get(proofHeight)[session.account] = node;
